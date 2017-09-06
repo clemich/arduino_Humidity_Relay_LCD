@@ -16,6 +16,11 @@ int treshold = 0;
 
 void setup()
 {  
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0,0);
@@ -32,39 +37,49 @@ void setup()
 
 void loop()
 {
+  Serial.println("Main loop");
   dht.readHumidity();
   dht.readTemperature();
 
   if (isnan(dht.humidity) || isnan(dht.temperature_C)) {
+    Serial.println("DHT read failed!");
     lcd.clear();
     lcd.print("DHT read failed!");
-    return;
-  }
-
-  // check potentiometre/treshold value, convert in percent and round it to nearest 5
-  treshold = int(( ( analogRead(POTENTIOMETRE_PIN) /10.24) +2)/5)*5;
-
-  // put temperature on screen
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(String(dht.temperature_C,1) + "C | IC: " + String(round(dht.computeHeatIndex_C())) + "C");
-
-  // put humidity on screen
-  lcd.setCursor(0,1);
-  lcd.print(String(dht.humidity,1) + "% | cur: " + String(treshold) + "%");
-
-  // treshold business
-  if(round(dht.humidity) >= treshold)
-  {
-    digitalWrite(RELAY1_PIN,HIGH);
-    digitalWrite(LED_PIN,HIGH);
   }
   else
   {
-    Serial.println("relay nok");
-    digitalWrite(RELAY1_PIN,LOW);
-    digitalWrite(LED_PIN,LOW);
-  }
+
+    // check potentiometre/treshold value, convert in percent and round it to nearest 5
+    treshold = int(( ( analogRead(POTENTIOMETRE_PIN) /10.24) +2)/5)*5;
+    
+    // put temperature on screen
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(String(dht.temperature_C,1) + "C | IC: " + String(round(dht.computeHeatIndex_C())) + "C");
+    Serial.println(String(dht.temperature_C,1) + "C | IC: " + String(round(dht.computeHeatIndex_C())) + "C");
   
+  
+    // put humidity on screen
+    lcd.setCursor(0,1);
+    lcd.print(String(dht.humidity,1) + "% | cur: " + String(treshold) + "%");
+    Serial.println(String(dht.humidity,1) + "% | cur: " + String(treshold) + "%");
+  
+    // treshold business
+    if(round(dht.humidity) >= treshold)
+    {
+      Serial.println("Treshold reached: relay must give current");
+      digitalWrite(RELAY1_PIN,HIGH);
+      digitalWrite(LED_PIN,HIGH);
+    }
+    else
+    {
+      Serial.println("Treshold not reached: relay must not give current");
+      digitalWrite(RELAY1_PIN,LOW);
+      digitalWrite(LED_PIN,LOW);
+    }
+  
+    
+  }
+
   delay(3000);  // wait 3 second (DHT requires 2)
 }

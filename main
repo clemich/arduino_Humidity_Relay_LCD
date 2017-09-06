@@ -1,0 +1,70 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x3F,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+#include <cactus_io_DHT22.h>
+#include <math.h>
+
+#define DHT22_PIN 2
+#define RELAY1_PIN 8
+#define RELAY2_PIN 9
+#define LED_PIN 13
+#define POTENTIOMETRE_PIN 1
+
+
+DHT22 dht(DHT22_PIN);
+int treshold = 0;
+
+void setup()
+{  
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Initialisation");
+
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+  digitalWrite(RELAY1_PIN,LOW);
+  digitalWrite(RELAY2_PIN,LOW);
+
+  dht.begin();
+}
+
+
+void loop()
+{
+  dht.readHumidity();
+  dht.readTemperature();
+
+  if (isnan(dht.humidity) || isnan(dht.temperature_C)) {
+    lcd.clear();
+    lcd.print("DHT read failed!");
+    return;
+  }
+
+  // check potentiometre/treshold value, convert in percent and round it to nearest 5
+  treshold = int(( ( analogRead(POTENTIOMETRE_PIN) /10.24) +2)/5)*5;
+
+  // put temperature on screen
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(String(dht.temperature_C,1) + "C | IC: " + String(round(dht.computeHeatIndex_C())) + "C");
+
+  // put humidity on screen
+  lcd.setCursor(0,1);
+  lcd.print(String(dht.humidity,1) + "% | cur: " + String(treshold) + "%");
+
+  // treshold business
+  if(round(dht.humidity) >= treshold)
+  {
+    digitalWrite(RELAY1_PIN,HIGH);
+    digitalWrite(LED_PIN,HIGH);
+  }
+  else
+  {
+    Serial.println("relay nok");
+    digitalWrite(RELAY1_PIN,LOW);
+    digitalWrite(LED_PIN,LOW);
+  }
+  
+  delay(3000);  // wait 3 second (DHT requires 2)
+}
